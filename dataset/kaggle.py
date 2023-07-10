@@ -42,7 +42,7 @@ class SubsetSampler(Sampler):
         return len(self.indices)
 
 class MyDataSet(torch.utils.data.Dataset): 
-    def __init__(self,root, datatxt, transform=None): 
+    def __init__(self,root, img_dir ,datatxt, transform=None): 
         
         self.root = root
         fh = open(root + datatxt, 'r') 
@@ -55,11 +55,13 @@ class MyDataSet(torch.utils.data.Dataset):
     
             
         self.imgs = imgs 
+        self.img_dir = img_dir
         self.transform = transform 
         
     def __getitem__(self, index): 
-        fn = self.imgs[index]  
-        fn = 'kaggle/'+fn
+        fn = self.imgs[index%800]  
+        # fn = 'kaggle/'+fn
+        fn = self.img_dir + fn
         img = Image.open(self.root+fn).convert('RGB')
         
         if self.transform is not None: 
@@ -68,7 +70,7 @@ class MyDataSet(torch.utils.data.Dataset):
         return img  
     
     def __len__(self): 
-        return len(self.imgs)
+        return 100000
     
     
 current_file_path = os.path.abspath(__file__)
@@ -84,7 +86,7 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-train_data = MyDataSet(root=root, datatxt='name.txt', transform=transform)
+train_data = MyDataSet(root=root, img_dir='kaggle/' ,datatxt='name.txt', transform=transform)
 
 # 指定每个 epoch 中获取的数据量
 samples_per_epoch = 64

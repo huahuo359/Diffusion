@@ -26,6 +26,9 @@ import torch, gc
 import matplotlib.pyplot as plt
 import math
 
+import argparse
+import random
+
 
 class Configs: 
     
@@ -34,14 +37,18 @@ class Configs:
         image_size = 128, 
         image_channel = 3,
         n_channels = 64, # 第一次卷积的输出通道数
-        ch_mults = (1, 2), 
-        is_atten = (False, False), 
+        ch_mults = (1, 2, 4), 
+        is_atten = (False, False, False), 
         n_steps = 1000, 
         batch_size = 32,
         n_samples = 16,
         learning_rate = 2e-5 ,
         epochs = 10, 
-        n_blocks = 1
+        n_blocks = 1, 
+        root = './data/single/', 
+        img = 'geese.png', 
+        load = True, 
+        net_name = 'geese.pth'
         ): 
         
         self.image_size = image_size
@@ -59,21 +66,22 @@ class Configs:
         
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         
-        current_file_path = os.path.abspath(__file__)
-        current_directory = os.path.dirname(current_file_path)
-        new_directory = current_directory + '/data/'
-        print("dir:", new_directory)
-        root = new_directory
+        # current_file_path = os.path.abspath(__file__)
+        # current_directory = os.path.dirname(current_file_path)
+        # new_directory = current_directory + '/data/'
+        # print("dir:", new_directory)
+        # root = new_directory
 
         transform = transforms.Compose([
-            transforms.Resize((128, 128)),
+            transforms.Resize((self.image_size, self.image_size)),
             transforms.ToTensor()
         ])
 
-        self.dataset = MyDataSet(root=root, filename='geese.png', transform=transform)
+        # self.dataset = MyDataSet(root=root, filename='geese.png', transform=transform)
+        self.dataset = MyDataSet(root=root, filename=img, transform=transform)
 
         # 指定每个 epoch 中获取的数据量
-        samples_per_epoch = 8000
+        samples_per_epoch = 8192
 
         # 创建自定义采样器
         indices = torch.randperm(len(self.dataset))[:samples_per_epoch]
@@ -90,7 +98,14 @@ class Configs:
             is_atten = self.is_atten
         )
         
-        # self.NetWork.load_state_dict(torch.load('geese.pth'))
+        self.net_name = net_name
+        
+        if load is True: 
+            print('[INFO] load the pre-trained network: ', net_name)
+            self.NetWork.load_state_dict(torch.load(net_name))
+        else: 
+            print('[INFO] train a new network: ', net_name)
+       
         
         self.ddpm = DDPM(
             network = self.NetWork,
@@ -115,18 +130,18 @@ class Configs:
             self.opt.step()   
             
             running_loss += loss.item()
-            if i % 16 == 15: 
-                print(f'[{i + 1:5d}] loss: {running_loss / 16:.3f}')
+            if i % 32 == 31: 
+                print(f'[INFO] running_loss [{i + 1:5d}] loss: {running_loss / 32:.3f}')
                 running_loss = 0.0
                 
                 
     def run(self): 
         
         for epoch in range(self.epochs): 
-            print('epoch: ', epoch)
+            print('[INFO] epoch: ', epoch)
             self.train_one_epoch() 
             self.show_generate(title = "Gen"+str(epoch))
-            torch.save(self.NetWork.state_dict(), 'geese.pth')
+            torch.save(self.NetWork.state_dict(), self.net_name)
         
     def show_images(self,images, title="show images"): 
         if type(images) is torch.Tensor:
@@ -174,12 +189,53 @@ class Configs:
                 x = self.ddpm.p_sample(x, x.new_full((self.n_samples,), t, dtype=torch.long))        
             x = x.permute(0, 2, 3, 1) 
             self.show_images(x, title)
-            
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--b', type=int, default=32, help='input batch size')
+    parser.add_argument('--image_size', type=int, default=32, help='the size of generate images') 
+    parser.add_argument('--channel', type=int, default=3, help='the channel of images')
+    parser.add_argument('--ch_mults', nargs=3, help='args for unet: ch_mults, for single unet the number is 3' )
+    parser.add_argument('--n', type=int, default=1, help='number of down/up block for unet')
+    parser.add_argument('--step', type=int, default=1000, help='the steps of adding noise/denoise') 
+    parser.add_argument('--lr', type=float, default=2e-5, help='learning rate')
+    parser.add_argument('--epoch', type=int, default=32, help='epoches to train')
+    parser.add_argument('--dataset', type=str, required=True, help='dataset path')
+    parser.add_argument('--img_name', type=str, required=True, help='choose the single image to train')
+    parser.add_argument('--load', action="store_true", help='load the pre-trained model or not')
+    parser.add_argument('--model_name', type=str, help='the name for trained/pre-trained network')
+    
+    
+    args = parser.parse_args() 
+    args.seed = random.randint(1, 100)  # set random seed for add noise
+
+    return args
+   
 def main(): 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('[INFO] device selected: ', device)
+    # get arguments
+    args = parse_args() 
+    print(args.dataset)
     
+    print('[INFO] set configs for training')
+    configs = Configs(image_size = args.image_size,
+                      image_channel = args.channel, 
+                      ch_mults = (1, 2, 4), 
+                      epochs = args.epoch,
+                      batch_size = args.b, 
+                      is_atten = (False, False, False), 
+                      root = args.dataset, 
+                      img = args.img_name, 
+                      load=args.load, 
+                      net_name=args.model_name
+                     )
     
-    configs = Configs(image_size=128,image_channel=3, ch_mults = (1, 2, 4), 
-        is_atten = (False, False, False))
+    print('[INFO] start to train')
     configs.run() 
 
 if __name__ == '__main__':

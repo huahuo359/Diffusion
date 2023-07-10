@@ -18,8 +18,7 @@ from torchvision import datasets
 
 from model.sunet import UNet 
 from model.ddpm import DDPM   
-from dataset.single import MyDataSet 
-from dataset.single import SubsetSampler
+from dataset.single import *
 
 import torch, gc
 
