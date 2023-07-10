@@ -139,9 +139,10 @@ class Configs:
         with torch.no_grad(): 
             x = torch.randn([self.n_samples, self.image_channel, self.image_size, self.image_size],device=self.device)
         
-            for t_ in range(self.n_steps):
-                t = self.n_steps - t_ - 1 
-                x = self.ddpm.p_sample(x, x.new_full((self.n_samples,), t, dtype=torch.long))        
+            # for t_ in range(self.n_steps):
+            #     t = self.n_steps - t_ - 1 
+            #     x = self.ddpm.p_sample(x, x.new_full((self.n_samples,), t, dtype=torch.long))        
+            x = self.ddpm.gen_img(x)
             x = x.permute(0, 2, 3, 1) 
             self.show_images(x, title)
             
