@@ -7,17 +7,14 @@ This is the repository for **ZJU 课程综合实践Ⅱ 2023**, the project we se
 We also simplify UNet by removing Attention Block , Middle Block and reducing the number of convolutional layers to train **single** image, it achieves interesting generation results different from UNet.
 
 - DDPM:
- <div align=center><img width="450" height="80" src="imgs/ddpm.png"  </div>
+ <div align="left"><img width="450" height="80" src="imgs/ddpm.png"  </div>
 
 - DDIM:
- <div align=center><img width="450" height="80" src="imgs/ddim.png"/></div>
+ <div align="left"><img width="450" height="80" src="imgs/ddim.png"/></div>
  
 - Single Diffusion:
-  <div align=center><img width="450" height="300" src="imgs/single.png"/></div>
+  <div align="left"><img width="450" height="300" src="imgs/single.png"/></div>
  
-
-
-
 ## File structure 
 
 - model:
