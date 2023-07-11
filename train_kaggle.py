@@ -138,9 +138,10 @@ class Configs:
         torch.save(self.NetWork.state_dict(), self.net_name)
         
         for epoch in range(self.epochs): 
-            print('epoch: ', epoch)
-            self.show_generate(title = "Gen"+str(epoch))
+            print('[INFO] epoch: ', epoch)
+            
             self.train_one_epoch() 
+            self.show_generate(title = "Gen"+str(epoch))
            
             torch.save(self.NetWork.state_dict(), self.net_name)
             
@@ -194,39 +195,6 @@ class Configs:
             x = x.permute(0, 2, 3, 1) 
             self.show_images(x, title)
             
-    def show_step(self, title="Step"): 
-        # 显示一张图像的生成过程
-        with torch.no_grad(): 
-            x = torch.randn([1, self.image_channel, self.image_size, self.image_size],device=self.device)
-            gen_steps = [] # 保存生成的中间步骤
-            
-            for t_ in range(self.n_steps): 
-                t = self.n_steps - t_ - 1 
-                x = self.ddpm.p_sample(x, x.new_full((1,), t, dtype=torch.long))
-                if t_%100 == 0: # steps 设置为1000 
-                    gen_steps.append(x.clone().detach().cpu())
-                    
-            gen_steps.append(x.clone().detach().cpu().numpy())
-        
-        fig = plt.figure(figsize=(32, 4))
-        img_num = len(gen_steps)
-    
-        rows = 1
-        cols = img_num
-
-        index = 0
-        
-        for i in range(rows):
-            for j in range(cols):
-                fig.add_subplot(rows,cols,index+1)
-                
-                if index < img_num:
-                    plt.imshow(gen_steps[index])
-                    index += 1
-                    
-        plt.savefig(f"{title}.png")
-        
-        plt.show()
                     
 def parse_args():
     """
@@ -250,6 +218,11 @@ def parse_args():
     
     args = parser.parse_args() 
     args.seed = random.randint(1, 100)  # set random seed for add noise
+    torch.manual_seed(args.seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+
 
     return args      
             
@@ -280,4 +253,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -17,7 +17,7 @@ from torchvision import datasets
 
 
 from model.sunet import UNet 
-from model.ddpm import DDPM   
+from model.ddpm import *   
 from dataset.single import MyDataSet 
 from dataset.single import SubsetSampler
 
@@ -73,7 +73,7 @@ class Configs:
         # root = new_directory
 
         transform = transforms.Compose([
-            transforms.Resize((self.image_size, self.image_size)),
+            transforms.Resize((128, 128)),
             transforms.ToTensor()
         ])
 
@@ -112,6 +112,8 @@ class Configs:
             steps = self.n_steps,
             device = self.device, 
         )
+        
+        
         
         self.opt = torch.optim.Adam(self.NetWork.parameters(), lr=self.lr)
         
@@ -212,6 +214,11 @@ def parse_args():
     
     args = parser.parse_args() 
     args.seed = random.randint(1, 100)  # set random seed for add noise
+    
+    torch.manual_seed(args.seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
 
     return args
    
@@ -243,6 +250,4 @@ if __name__ == '__main__':
     gc.collect()
     torch.cuda.empty_cache()
     main()
-
-
 

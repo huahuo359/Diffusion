@@ -151,7 +151,7 @@ class MiddleBlock(nn.Module):
         return x  
     
 class Upsample(nn.Module): 
-    
+    # 把图像的尺寸扩大二倍
     def __init__(self, in_channels): 
         super().__init__() 
         self.upblock = nn.ConvTranspose2d(in_channels, in_channels,4,2,1)
@@ -161,7 +161,7 @@ class Upsample(nn.Module):
         return self.upblock(x)   
     
 class Downsample(nn.Module): 
-    
+    # 把图像的尺寸缩减一半
     def __init__(self, in_channels): 
         super().__init__() 
         self.downblock = nn.Conv2d(in_channels, in_channels, 3,2,1) 

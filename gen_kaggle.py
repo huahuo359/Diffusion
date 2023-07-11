@@ -1,12 +1,5 @@
 import sys
 import os
-# current_file_path = os.path.abspath(__file__)
-# current_directory = os.path.dirname(current_file_path)
-# root = current_directory + '/'
-# print(root)
-
-# sys.path.append(root)
-
 import torch
 import torch.utils.data
 import torchvision
@@ -17,6 +10,7 @@ from torchvision import datasets
 
 from model.unet import UNet 
 from model.ddpm import *   
+from model.ddim import *
 from dataset.kaggle import MyDataSet 
 from dataset.kaggle import SubsetSampler
 
@@ -26,21 +20,24 @@ import math
 import argparse
 import random
 
+import time
+
 class Configs: 
     
     def __init__(
         self, 
         image_size = 64, 
         image_channel = 3,
-        n_channels = 64, # 第一次卷积的输出通道数
+        n_channels = 64, # The number of output channels of the first convolution
         ch_mults = (1, 2, 2, 4), 
         is_atten = (False, False,True, True), 
         n_steps = 1000, 
-        batch_size = 16,
+        batch_size = 1,
         n_samples = 4,
         learning_rate = 2e-5 ,
         epochs = 10, 
         n_blocks = 2, 
+        ddim_steps = 100,
         root = './data/', 
         img_dir = 'kaggle/', 
         data_txt = 'name.txt',
@@ -59,15 +56,10 @@ class Configs:
         self.lr = learning_rate 
         self.epochs = epochs 
         self.n_blocks = n_blocks
+        self.ddim_steps = ddim_steps
        
         
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        
-        # current_file_path = os.path.abspath(__file__)
-        # current_directory = os.path.dirname(current_file_path)
-        # new_directory = current_directory + '/data/'
-        # print("dir:", new_directory)
-        # root = new_directory
        
         transform = transforms.Compose([
             transforms.Resize((self.image_size, self.image_size)),
@@ -100,10 +92,7 @@ class Configs:
             self.NetWork.load_state_dict(torch.load(net_name))
         else:
             print('[INFO] train a new network: ', net_name)
-            
-            
-        
-        # self.NetWork.load_state_dict(torch.load('Gen8000.pth'))
+
         
         self.ddpm = DDPM(
             network = self.NetWork,
@@ -117,44 +106,7 @@ class Configs:
             device = self.device, 
         )
         
-    
-        
-        
-        self.opt = torch.optim.Adam(self.NetWork.parameters(), lr=self.lr)
-        
-        
-    def train_one_epoch(self): 
-        
-        running_loss = 0.0 
-        
-        for i, data in enumerate(self.dataloader, 0): 
-            inputs = data 
-            inputs = inputs.to(self.device)
             
-            self.opt.zero_grad() 
-            loss = self.ddpm.loss(inputs)  
-            loss.backward() 
-            self.opt.step()   
-            
-            running_loss += loss.item()
-            
-            if i % 32 == 31: 
-                print(f'[INFO] running_loss [{i + 1:5d}] loss: {running_loss / 32:.3f}')
-                running_loss = 0.0
-                
-                
-    def run(self): 
-        torch.save(self.NetWork.state_dict(), self.net_name)
-        
-        for epoch in range(self.epochs): 
-            print('epoch: ', epoch)
-            self.show_generate(title = "Gen"+str(epoch))
-            self.train_one_epoch() 
-           
-            torch.save(self.NetWork.state_dict(), self.net_name)
-            
-        
-        
     def show_images(self,images, title="show images"): 
         if type(images) is torch.Tensor:
             images = images.detach().cpu().numpy()
@@ -164,7 +116,7 @@ class Configs:
         rows = int(math.sqrt(img_num))
         cols = round(img_num / rows)
         
-        rows = 2 
+        rows = 2
         cols = 2
 
         index = 0
@@ -174,10 +126,9 @@ class Configs:
                 fig.add_subplot(rows,cols,index+1)
                 
                 if index < img_num:
-                    plt.imshow(images[index])
+                    plt.imshow( images[index] ,vmin=0, vmax=1)
                     index += 1
-                    
-        fig.suptitle(title,fontsize=30)
+        # fig.suptitle('name',fontsize=30)      
         plt.savefig(f"{title}.png")
         
         plt.show()
@@ -188,40 +139,48 @@ class Configs:
             batch = batch.permute(0, 2, 3, 1) 
             self.show_images(batch, "x0")
             
-            print(batch[0].shape)
             break
     
-    def show_generate(self, title="Gen"): 
+    def show_generate_ddpm(self, title="Gen_ddpm"): 
         
         with torch.no_grad(): 
             x = torch.randn([self.n_samples, self.image_channel, self.image_size, self.image_size],device=self.device)
             
-            x = self.ddpm.gen_img(x)
-            # for t_ in range(self.n_steps):
-            #     t = self.n_steps - t_ - 1 
-            #     x = self.ddpm.p_sample(x, x.new_full((self.n_samples,), t, dtype=torch.long))        
+            x = self.ddpm.gen_img(x)    
+            x = x.permute(0, 2, 3, 1) 
+            self.show_images(x, title)
+            
+    def show_generate_ddim(self, title="Gen_ddim"): 
+        
+        with torch.no_grad(): 
+            x = torch.randn([self.n_samples, self.image_channel, self.image_size, self.image_size],device=self.device)
+            
+            x = self.ddim.gen_img(xt=x, ddim_step=self.ddim_steps)    
             x = x.permute(0, 2, 3, 1) 
             self.show_images(x, title)
             
     def show_step(self, title="Step"): 
-        # 显示一张图像的生成过程
+        # show the steps of generating an image
         with torch.no_grad(): 
             x = torch.randn([1, self.image_channel, self.image_size, self.image_size],device=self.device)
-            gen_steps = [] # 保存生成的中间步骤
+            
+            
+            gen_steps = [] # Save generated intermediate steps
             
             for t_ in range(self.n_steps): 
                 t = self.n_steps - t_ - 1 
                 x = self.ddpm.p_sample(x, x.new_full((1,), t, dtype=torch.long))
-                if t_%100 == 0: # steps 设置为1000 
-                    gen_steps.append(x.clone().detach().cpu())
+                if t_%100 == 0 or (t_>700 and t_%40 ==0 ) or (t_>900 and t_%20 ==0 ) or t_==990: # steps is 1000 
+                    gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu()) 
+                
                     
-            gen_steps.append(x.clone().detach().cpu().numpy())
+            gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu().numpy())
         
-        fig = plt.figure(figsize=(32, 4))
+        fig = plt.figure(figsize=(32, 8))
         img_num = len(gen_steps)
     
-        rows = 1
-        cols = img_num
+        rows = 2
+        cols = img_num // 2
 
         index = 0
         
@@ -230,12 +189,56 @@ class Configs:
                 fig.add_subplot(rows,cols,index+1)
                 
                 if index < img_num:
-                    plt.imshow(gen_steps[index])
+                    plt.imshow(gen_steps[index][0])
                     index += 1
                     
         plt.savefig(f"{title}.png")
         
         plt.show()
+    
+    def show_inverse(self, title="Inverse"):
+        with torch.no_grad:
+            for i, data in enumerate(self.dataloader, 0): 
+                inputs = data 
+                inputs = inputs.to(self.device)
+                self.show_images(title="start_x0")
+                noise_in = self.ddpm.q_sample(inputs, 999)
+                self.show_images(title="noise_x0")
+                
+            x = noise_in
+            
+            
+            gen_steps = [] # Save generated intermediate steps
+            
+            for t_ in range(self.n_steps): 
+                t = self.n_steps - t_ - 1 
+                x = self.ddpm.p_sample(x, x.new_full((1,), t, dtype=torch.long))
+                if t_%100 == 0 or (t_>700 and t_%40 ==0 ) or (t_>900 and t_%20 ==0 ) or t_==990: # steps is 1000 
+                    gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu()) 
+                
+                    
+            gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu().numpy())
+        
+        fig = plt.figure(figsize=(32, 8))
+        img_num = len(gen_steps)
+    
+        rows = 2
+        cols = img_num // 2
+
+        index = 0
+        
+        for i in range(rows):
+            for j in range(cols):
+                fig.add_subplot(rows,cols,index+1)
+                
+                if index < img_num:
+                    plt.imshow(gen_steps[index][0])
+                    index += 1
+                    
+        plt.savefig(f"{title}.png")
+        
+        plt.show()
+                
                     
 def parse_args():
     """
@@ -255,10 +258,18 @@ def parse_args():
     parser.add_argument('--data_txt', type=str, help='choose data.txt for dataset')
     parser.add_argument('--load', action="store_true", help='load the pre-trained model or not')
     parser.add_argument('--model_name', type=str, help='the name for trained/pre-trained network')
+    parser.add_argument('--gen_name', type=str, help='the generate image name')
+    parser.add_argument('--ddim_steps', type=int, help='the steps for ddim to generate picture')
+    
     
     
     args = parser.parse_args() 
     args.seed = random.randint(1, 100)  # set random seed for add noise
+    
+    torch.manual_seed(args.seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
 
     return args      
             
@@ -274,6 +285,7 @@ def main():
                       image_channel = args.channel, 
                       epochs = args.epoch,
                       batch_size = args.b, 
+                      ddim_steps = args.ddim_steps,
                       ch_mults = (1, 2, 3, 4), 
                       is_atten = (False,False, True, True), 
                       root = args.dataset,
@@ -282,11 +294,29 @@ def main():
                       load=args.load, 
                       net_name=args.model_name
                       )
-    # configs.show_x0() 
-    print('[INFO] start to train')
-    configs.run() 
-    configs.show_generate(title="G_end")
+    configs.show_x0() 
+    print('[INFO] start to gen image by ddpm')
+    start_time = time.time()
+    
+
+    configs.show_generate_ddpm(title=(args.gen_name+'_ddpm'))
+
+    end_time = time.time()
+    elapsed_time_ddpm = end_time - start_time
+
+    start_time = time.time()
+    print("[INFO] Elapsed time for show_generate_ddpm:", elapsed_time_ddpm, "seconds")
+    
+    print('[INFO] start to gen image by ddim')
+    configs.show_generate_ddim(title=(args.gen_name+'_ddim'))
+
+    end_time = time.time()
+    elapsed_time_ddim = end_time - start_time
+    print("[INFO] Elapsed time for show_generate_ddim:", elapsed_time_ddim, "seconds")
+
+    print("[INFO] start to show steps to generate an image by ddpm")
+    configs.show_step()
+
 
 if __name__ == '__main__':
     main()
-
