@@ -1,11 +1,5 @@
 import sys
 import os
-# current_file_path = os.path.abspath(__file__)
-# current_directory = os.path.dirname(current_file_path)
-# root = current_directory + '/'
-# print(root)
-
-# sys.path.append(root)
 
 import torch
 import torch.utils.data
@@ -62,12 +56,7 @@ class Configs:
        
         
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        
-        # current_file_path = os.path.abspath(__file__)
-        # current_directory = os.path.dirname(current_file_path)
-        # new_directory = current_directory + '/data/'
-        # print("dir:", new_directory)
-        # root = new_directory
+    
        
         transform = transforms.Compose([
             transforms.Resize((self.image_size, self.image_size)),
@@ -101,10 +90,6 @@ class Configs:
         else:
             print('[INFO] train a new network: ', net_name)
             
-            
-        
-        # self.NetWork.load_state_dict(torch.load('Gen8000.pth'))
-        
         self.ddpm = DDPM(
             network = self.NetWork,
             steps = self.n_steps,
@@ -135,7 +120,6 @@ class Configs:
                 
                 
     def run(self): 
-        torch.save(self.NetWork.state_dict(), self.net_name)
         
         for epoch in range(self.epochs): 
             print('[INFO] epoch: ', epoch)
@@ -246,10 +230,8 @@ def main():
                       load=args.load, 
                       net_name=args.model_name
                       )
-    # configs.show_x0() 
     print('[INFO] start to train')
     configs.run() 
-    # configs.show_generate(title="G2")
 
 if __name__ == '__main__':
     main()

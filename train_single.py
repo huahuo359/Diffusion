@@ -1,12 +1,5 @@
 import sys
 import os
-# current_file_path = os.path.abspath(__file__)
-# current_directory = os.path.dirname(current_file_path)
-# root = current_directory + '/'
-# print(root)
-
-# sys.path.append(root)
-
 import torch
 import torch.utils.data
 import torchvision
@@ -66,18 +59,12 @@ class Configs:
         
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         
-        # current_file_path = os.path.abspath(__file__)
-        # current_directory = os.path.dirname(current_file_path)
-        # new_directory = current_directory + '/data/'
-        # print("dir:", new_directory)
-        # root = new_directory
 
         transform = transforms.Compose([
             transforms.Resize((128, 128)),
             transforms.ToTensor()
         ])
 
-        # self.dataset = MyDataSet(root=root, filename='geese.png', transform=transform)
         self.dataset = MyDataSet(root=root, filename=img, transform=transform)
 
         # 指定每个 epoch 中获取的数据量
@@ -88,7 +75,7 @@ class Configs:
         sampler = SubsetSampler(indices)
         self.dataloader = DataLoader(dataset=self.dataset, batch_size=self.batch_size, sampler=sampler)
 
-        
+        # 设定 UNet 参数        
         self.NetWork = UNet(
             image_size= 128,
             image_channels = self.image_channel,

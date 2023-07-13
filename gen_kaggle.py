@@ -16,11 +16,13 @@ from dataset.kaggle import SubsetSampler
 
 import matplotlib.pyplot as plt
 import math
+import imageio
 
 import argparse
 import random
 
 import time
+import numpy as np
 
 class Configs: 
     
@@ -166,16 +168,34 @@ class Configs:
             
             
             gen_steps = [] # Save generated intermediate steps
+            pil_images = []
             
             for t_ in range(self.n_steps): 
                 t = self.n_steps - t_ - 1 
                 x = self.ddpm.p_sample(x, x.new_full((1,), t, dtype=torch.long))
                 if t_%100 == 0 or (t_>700 and t_%40 ==0 ) or (t_>900 and t_%20 ==0 ) or t_==990: # steps is 1000 
+                   
                     gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu()) 
+                    step_img = x.permute(0, 2, 3, 1).clone().detach().cpu().numpy()
+                    step_img = np.uint8(step_img*255)  # Convert to uint8
+                    step_img = step_img.squeeze()  # Flatten the array
+                    # step_img.resize((300,300))
+                    pil_images.append(Image.fromarray(step_img))
                 
-                    
+            
+         
             gen_steps.append(x.permute(0, 2, 3, 1).clone().detach().cpu().numpy())
+            
+            step_img = x.permute(0, 2, 3, 1).clone().detach().cpu().numpy()
+            step_img = np.uint8(step_img*255)  # Convert to uint8
+            step_img = step_img.squeeze()  # Flatten the array
+           
+            pil_images.append(Image.fromarray(step_img))
         
+        # Create the GIF using imageio
+        # pil_images = [Image.fromarray(img[0]) for img in gen_steps]
+
+        imageio.mimsave("generated_steps.gif", pil_images, duration=200)
         fig = plt.figure(figsize=(32, 8))
         img_num = len(gen_steps)
     
@@ -195,6 +215,12 @@ class Configs:
         plt.savefig(f"{title}.png")
         
         plt.show()
+    
+    
+    def create_gif(images, filename, duration=200):
+        # Create GIF from a list of images
+        images[0].save(filename, save_all=True, append_images=images[1:], optimize=False, duration=duration, loop=0)
+    
     
     def show_inverse(self, title="Inverse"):
         with torch.no_grad:
@@ -297,7 +323,6 @@ def main():
     configs.show_x0() 
     print('[INFO] start to gen image by ddpm')
     start_time = time.time()
-    
 
     configs.show_generate_ddpm(title=(args.gen_name+'_ddpm'))
 

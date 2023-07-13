@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import math
 
-def linear_beta_schedule(steps, min_beta, max_beta):
+def linear_beta_schedule(steps=1000, min_beta=0.001, max_beta=0.02):
     return torch.linspace(min_beta, max_beta, steps)
     
 def cosine_beta_schedule(steps, s = 0.008): 
@@ -51,7 +51,7 @@ class DDPM(nn.Module):
     
     
     def q_sample(self, x0, t, eta=None): 
-        # 添加噪声 
+        # add noise 
         b, c, h, w = x0.shape
         a_bar = self.alpha_bars[t]
         if eta is None:  
@@ -96,13 +96,15 @@ class DDPM(nn.Module):
   
     def loss(self, x0, noise=None): 
         
-        # 计算生成的噪声与实际添加的噪声的 loss 
+        # Computes the loss of the noise generated versus the noise actually added
         batch_size = x0.shape[0] 
         t = torch.randint(0, self.steps, (batch_size,), device=x0.device, dtype=torch.long)
         
+        # generate the noise
         if noise is None: 
             noise = torch.randn_like(x0) 
-            
+        
+        # enerate noisy Image
         xt = self.q_sample(x0, t, noise) 
         
         pre_noise = self.network(xt, t)   
@@ -117,58 +119,3 @@ class DDPM(nn.Module):
         
         return xt
     
-# class DDIM(DDPM): 
-#     def __init__(self, 
-#                  network, 
-#                  steps=1000, 
-#                  beta_schedule = 'linear',
-#                  min_beta=0.0001, 
-#                  max_beta=0.02, 
-#                  device=None, 
-#                  img_size=(3, 64, 64)):
-#         super().__init__(
-#             network = network, 
-#             steps = steps, 
-#             beta_schedule = beta_schedule, 
-#             min_beta = min_beta, 
-#             max_beta = max_beta,
-#             device = device, 
-#             img_size = img_size 
-#         )
-    
-#     # 使用 DDIM 的去噪过程,加速图像的生成
-#     def gen_img(self, 
-#                  xt, 
-#                  simple_var = True,
-#                  ddim_step = 100,  # 缩减生成的过程到100步
-#                  eta = 1
-#                  ):
-#         if simple_var:
-#             eta = 1 
-#         # 取出需要进行生成步骤的 time
-#         ti = torch.linspace(self.steps, 0, (ddim_step+1)).to(self.device).to(torch.long)
-        
-#         n_samples = xt.shape[0]
-        
-#         for i in range(1, ddim_step+1):
-#             cur_t = ti[i-1] - 1
-#             pre_t = ti[i] - 1
-#             abar_cur = self.alpha_bars[cur_t]
-#             abar_pre = self.alpha_bars[pre_t] if pre_t>=0 else 1
-#             # print(cur_t)
-#             eta_theta = self.network(xt, xt.new_full((n_samples,), cur_t.item(), dtype=torch.long)) # 预测出的可能添加的噪声
-#             var = eta * (1 - abar_pre)/(1 - abar_cur) * (1 - abar_cur/abar_pre)
-#             noise = torch.randn_like(xt) # 随机生成高斯噪声
-            
-#             # DDIM 的去噪公式 
-#             first_item = (abar_pre/abar_cur)**0.5 * xt
-#             second_item = ((1 - abar_pre - var)**0.5 - (abar_pre*(1-abar_cur)/abar_cur)**0.5)*eta_theta
-            
-#             if simple_var:
-#                 third_iterm = (1 - abar_cur/abar_pre)**0.5 * noise
-#             else:
-#                 third_iterm = var**0.5 * noise 
-                
-#             xt = first_item + second_item + third_iterm 
-        
-#         return xt

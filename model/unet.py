@@ -123,7 +123,7 @@ class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels, time_channels, has_atten): 
         
         super().__init__() 
-        # UpBlock 实现跳跃连接
+        # Implement skip connections
         self.resblock = ResBlock(in_channels+out_channels, out_channels, time_channels) 
         self.attnblock = SelfAttention(out_channels) if has_atten else nn.Identity() 
         

@@ -59,10 +59,9 @@ class MyDataSet(torch.utils.data.Dataset):
         self.transform = transform 
         
     def __getitem__(self, index): 
-        fn = self.imgs[index%800]  
-        # fn = 'kaggle/'+fn
+        fn = self.imgs[index%2000]  # get image file name
         fn = self.img_dir + fn
-        img = Image.open(self.root+fn).convert('RGB')
+        img = Image.open(self.root+fn).convert('RGB') # read the image
         
         if self.transform is not None: 
             img = self.transform(img) 

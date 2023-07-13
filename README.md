@@ -74,7 +74,7 @@ You can see the Genrate steps for images:
 
 ## Prerequisites
 
-- Linux/MacOS 
+- Linux
 - Python3
 - CPU or NVIDIA GPU
 
@@ -152,35 +152,27 @@ python3 gen_single.py \
     --img_name geese.png \
     --image_size=128 \
     --load \
-    --model_name geese.pth
-
-
-python3 gen_single.py \
-    --dataset ./data/single/ \
-    --img_name oil_paint.png \
-    --image_size=128 \
-    --load \
-    --model_name oil.pth
+    --model_name geese.pth 
 ```
 
-## Pretrained models
+## Our trained models
 We supply our pretrained NetWork in ..., 
 you can use these Networks to generate the images
 
 ## Neural Network Structure
 
 Our Neural Networks are based on UNet
- <div align=center><img width="400" height="300" src="imgs/unet.png"/></div>
+ <div align=center><img width="600" height="300" src="imgs/unet.png"/></div>
 
 
 
 ## Reference 
 
-1.DDPM:[https://arxiv.org/abs/2006.11239](https://arxiv.org/abs/2006.11239)
+1.DDPM:[🔗](https://arxiv.org/abs/2006.11239)
 
-2.DDIM:[https://arxiv.org/abs/2010.02502](https://arxiv.org/abs/2010.02502)
+2.DDIM:[🔗](https://arxiv.org/abs/2010.02502)
 
-3.Single Diffusion:[https://github.com/WeilunWang/SinDiffusion](https://github.com/WeilunWang/SinDiffusion)
+3.Single Diffusion:[🔗](https://github.com/WeilunWang/SinDiffusion)
 
-4.DDPM PyTorch implementation:[https://github.com/labmlai/annotated_deep_learning_paper_implementations/tree/master/labml_nn/diffusion/ddpm](https://github.com/labmlai/annotated_deep_learning_paper_implementations/tree/master/labml_nn/diffusion/ddpm)
+4.DDPM PyTorch implementation:[🔗](https://github.com/labmlai/annotated_deep_learning_paper_implementations/tree/master/labml_nn/diffusion/ddpm)
 

@@ -1,3 +1,5 @@
 numpy==1.24.3
 torch==2.0.1
 tqdm==4.65.0
+imageio==2.31.1
+pillow==9.2.0
